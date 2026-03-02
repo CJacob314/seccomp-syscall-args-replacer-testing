@@ -8,16 +8,13 @@ use thiserror::Error;
 #[derive(Error)]
 pub enum ProgramError {
     #[error("libc syscall wrapper error\nsource: {src}\nbacktrace:\n{bt}")]
-    SyscallWrapperError {
-        src: io::Error,
-        bt: BT,
-    },
+    SyscallWrapperError { src: io::Error, bt: BT },
 
     #[error("no CLI-specified program to run")]
     NoCLISpecifiedProgram,
 
     #[error("NulError in CString creation")]
-    CStringCreation(#[from] NulError)
+    CStringCreation(#[from] NulError),
 }
 
 // Forward the Debug impl to the Display impl for prettier backtrace printing

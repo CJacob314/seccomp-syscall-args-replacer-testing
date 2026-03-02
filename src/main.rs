@@ -3,7 +3,8 @@
 use std::{env, ffi::CString, io, mem::offset_of, ptr, result};
 
 use libc::{
-    BPF_ABS, BPF_JEQ, BPF_JMP, BPF_JUMP, BPF_K, BPF_LD, BPF_RET, BPF_STMT, BPF_W, SECCOMP_RET_ALLOW, SECCOMP_RET_KILL_PROCESS, SECCOMP_SET_MODE_FILTER
+    BPF_ABS, BPF_JEQ, BPF_JMP, BPF_JUMP, BPF_K, BPF_LD, BPF_RET, BPF_STMT, BPF_W,
+    SECCOMP_RET_ALLOW, SECCOMP_RET_KILL_PROCESS, SECCOMP_SET_MODE_FILTER,
 };
 
 mod bindings;
@@ -74,7 +75,6 @@ fn setup_seccomp_filters() -> Result<()> {
                 (BPF_LD | BPF_W | BPF_ABS) as u16,
                 offset_of!(libc::seccomp_data, arch) as u32,
             ),
-
             // If arch == AUDIT_ARCH_X86_64, continue; else kill
             BPF_JUMP(
                 (BPF_JMP | BPF_JEQ | BPF_K) as u16,
@@ -83,13 +83,11 @@ fn setup_seccomp_filters() -> Result<()> {
                 0,
             ),
             BPF_STMT((BPF_RET | BPF_K) as u16, SECCOMP_RET_KILL_PROCESS),
-
             // Load syscall number
             BPF_STMT(
                 (BPF_LD | BPF_W | BPF_ABS) as u16,
                 offset_of!(libc::seccomp_data, nr) as u32,
             ),
-
             // If nr == SYS_clone, trigger a SECCOMP_RET_TRAP
             BPF_JUMP(
                 (BPF_JMP | BPF_JEQ | BPF_K) as u16,
@@ -98,24 +96,33 @@ fn setup_seccomp_filters() -> Result<()> {
                 1,
             ),
             BPF_STMT((BPF_RET | BPF_K) as u16, libc::SECCOMP_RET_TRAP),
-
             // If nr == SYS_clone3, also trigger a SECCOMP_RET_TRAP
-            BPF_JUMP((BPF_JMP | BPF_JEQ | BPF_K) as u16, libc::SYS_clone3 as u32, 0, 1),
+            BPF_JUMP(
+                (BPF_JMP | BPF_JEQ | BPF_K) as u16,
+                libc::SYS_clone3 as u32,
+                0,
+                1,
+            ),
             BPF_STMT((BPF_RET | BPF_K) as u16, libc::SECCOMP_RET_TRAP),
-
             // Otherwise, allow
-            BPF_STMT((BPF_RET | BPF_K) as u16, SECCOMP_RET_ALLOW)
+            BPF_STMT((BPF_RET | BPF_K) as u16, SECCOMP_RET_ALLOW),
         ]
     };
 
     let bpf_prog = libc::sock_fprog {
         len: bpf_insts.len() as u16,
-        filter: (&raw mut bpf_insts).cast()
+        filter: (&raw mut bpf_insts).cast(),
     };
 
     if unsafe {
-        libc::syscall(libc::SYS_seccomp, SECCOMP_SET_MODE_FILTER, 0, &raw const bpf_prog)
-    } == 0 {
+        libc::syscall(
+            libc::SYS_seccomp,
+            SECCOMP_SET_MODE_FILTER,
+            0,
+            &raw const bpf_prog,
+        )
+    } == 0
+    {
         Ok(())
     } else {
         Err(io::Error::last_os_error().into())
