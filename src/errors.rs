@@ -15,6 +15,9 @@ pub enum ProgramError {
 
     #[error("NulError in CString creation")]
     CStringCreation(#[from] NulError),
+
+    #[error("CLONE_THREAD flag wasn't successfully removed from the sys_clone call")]
+    SeccompFlagAdjustmentFailed,
 }
 
 // Forward the Debug impl to the Display impl for prettier backtrace printing
