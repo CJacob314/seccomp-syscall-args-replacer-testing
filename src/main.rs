@@ -84,8 +84,8 @@ fn test() -> Result<()> {
         unsafe {
             libc::write(
                 libc::STDOUT_FILENO,
-                c"Hello from the child task!".as_ptr().cast(),
-                26,
+                c"Hello from the child task!\n".as_ptr().cast(),
+                27,
             );
         };
 
@@ -109,7 +109,7 @@ fn test() -> Result<()> {
 
     let parent_pid = unsafe { libc::getpid() };
 
-    let mut child_pid = 0;
+    let mut child_pid;
     loop {
         std::hint::spin_loop();
 
@@ -219,7 +219,7 @@ fn setup_seccomp_filters() -> Result<()> {
 fn setup_sigsys_handler() -> Result<()> {
     let mut act: libc::sigaction = unsafe { std::mem::zeroed() };
 
-    act.sa_flags = libc::SA_SIGINFO | libc::SA_NODEFER;
+    act.sa_flags = libc::SA_SIGINFO;
     act.sa_sigaction = sigsys_handler as *const () as usize;
     assert_ne!(unsafe { libc::sigemptyset(&mut act.sa_mask) }, -1);
 
@@ -251,19 +251,18 @@ extern "C" fn sigsys_handler(
         return;
     }
 
-    let ctx = &mut unsafe { *(uctx as *mut libc::ucontext_t) };
+    let ctx = unsafe { &mut *(uctx as *mut libc::ucontext_t) };
 
     // clone_flags is in %rdi on x86-64
-    let rdi = ctx.uc_mcontext.gregs[libc::REG_RDI as usize] as u64;
+    let [rdi, rip] = unsafe {
+        ctx.uc_mcontext
+            .gregs
+            .get_disjoint_unchecked_mut([libc::REG_RDI, libc::REG_RIP].map(|x| x as usize))
+    };
 
     // And **out** CLONE_THREAD from flags
-    ctx.uc_mcontext.gregs[libc::REG_RDI as usize] &= !libc::CLONE_THREAD as i64;
+    *rdi &= !(libc::CLONE_THREAD as i64);
 
     // Re-execute the system call
-    // ctx.uc_mcontext.gregs[libc::REG_RIP as usize] -= 2 as libc::greg_t;
-    // ctx.uc_mcontext.gregs[libc::REG_RIP as usize] = unsafe { info._sifields._sigsys._call_addr } as i64 - 2;
-
-    // DEBUG NOTE: The program should receive a SIGSEGV if we can change the %rip register AT
-    // ALL with this style of assignment
-    ctx.uc_mcontext.gregs[libc::REG_RIP as usize] = 0;
+    *rip -= 2;
 }
