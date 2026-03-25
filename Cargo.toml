@@ -7,7 +7,7 @@ edition = "2024"
 libc = "0.2.182"
 thiserror = "2.0.18"
 
-# bindgen for Linux kernel header files. Currently just need AUDIT_ARCH_X86_64 from <linux/audit.h>
+# bindgen for Linux kernel header files. For example: AUDIT_ARCH_X86_64 from <linux/audit.h>
 [build-dependencies]
 bindgen = "0.71.0"
 

@@ -8,6 +8,8 @@ fn main() {
         .header("wrapper.h")
         .allowlist_var("AUDIT_ARCH_X86_64")
         .allowlist_var("SYS_SECCOMP")
+        .allowlist_var("SECCOMP_IOCTL_NOTIF_RECV")
+        .allowlist_var("SECCOMP_IOCTL_NOTIF_SEND")
         .allowlist_type("siginfo_t") // The libc crate siginfo_t type is seemingly incomplete?
         .clang_arg("-D__USE_GNU") // Just in case
         .generate_comments(false)
